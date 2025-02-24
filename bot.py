@@ -4,7 +4,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from config import TELEGRAM_BOT_TOKEN, HELP_MESSAGE, SUPPORTED_PAIRS, UPDATE_INTERVAL
-from api_client import CoinGeckoAPI
+from api_client import AlphaVantageAPI
 from analysis import TechnicalAnalysis
 
 # Set up logging
@@ -23,7 +23,7 @@ logger.info(f"Starting bot with token starting with: {TELEGRAM_BOT_TOKEN[:5]}...
 
 class CryptoSignalBot:
     def __init__(self):
-        self.api = CoinGeckoAPI()
+        self.api = AlphaVantageAPI()
         self.analysis = TechnicalAnalysis()
         self.price_alerts = {}  # Store price alerts: {user_id: {symbol: target_price}}
 
@@ -31,7 +31,7 @@ class CryptoSignalBot:
         """Send welcome message when the command /start is issued."""
         logger.info(f"New user started the bot: {update.effective_user.id}")
         await update.message.reply_text(
-            "Welcome to the Crypto Trading Signal Bot!\n" + HELP_MESSAGE
+            "Welcome to the Forex Trading Signal Bot!\n" + HELP_MESSAGE
         )
 
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -41,7 +41,7 @@ class CryptoSignalBot:
     async def price(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Get current price for a symbol."""
         if not context.args or len(context.args) != 1:
-            await update.message.reply_text("Please provide a symbol. Example: /price BTC/USD")
+            await update.message.reply_text("Please provide a symbol. Example: /price EUR/USD")
             return
 
         symbol = context.args[0].upper()
@@ -51,14 +51,14 @@ class CryptoSignalBot:
 
         price = self.api.get_price(symbol)
         if price:
-            await update.message.reply_text(f"Current {symbol} price: ${price:,.2f}")
+            await update.message.reply_text(f"Current {symbol} price: {price:.4f}")
         else:
             await update.message.reply_text("Error fetching price. Please try again later.")
 
     async def analysis_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Get technical analysis for a symbol."""
         if not context.args or len(context.args) != 1:
-            await update.message.reply_text("Please provide a symbol. Example: /analysis BTC/USD")
+            await update.message.reply_text("Please provide a symbol. Example: /analysis EUR/USD")
             return
 
         symbol = context.args[0].upper()
@@ -70,9 +70,9 @@ class CryptoSignalBot:
         if analysis_result:
             message = (
                 f"Technical Analysis for {symbol}:\n"
-                f"Current Price: ${analysis_result['price']:,.2f}\n"
-                f"Short-term SMA: ${analysis_result['sma_short']:,.2f}\n"
-                f"Long-term SMA: ${analysis_result['sma_long']:,.2f}\n"
+                f"Current Price: {analysis_result['price']:.4f}\n"
+                f"Short-term SMA: {analysis_result['sma_short']:.4f}\n"
+                f"Long-term SMA: {analysis_result['sma_long']:.4f}\n"
                 f"RSI: {analysis_result['rsi']:.2f}\n"
                 f"Signal: {analysis_result['signal']}"
             )
@@ -83,7 +83,7 @@ class CryptoSignalBot:
     async def alert(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Set price alert for a symbol."""
         if not context.args or len(context.args) != 2:
-            await update.message.reply_text("Please provide symbol and price. Example: /alert BTC/USD 30000")
+            await update.message.reply_text("Please provide symbol and price. Example: /alert EUR/USD 1.2000")
             return
 
         symbol = context.args[0].upper()
@@ -102,7 +102,7 @@ class CryptoSignalBot:
             self.price_alerts[user_id] = {}
         self.price_alerts[user_id][symbol] = target_price
 
-        await update.message.reply_text(f"Alert set for {symbol} at ${target_price:,.2f}")
+        await update.message.reply_text(f"Alert set for {symbol} at {target_price:.4f}")
 
     async def pairs(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show supported pairs."""
@@ -118,7 +118,7 @@ class CryptoSignalBot:
                     if current_price >= target_price:
                         await context.bot.send_message(
                             chat_id=user_id,
-                            text=f"🚨 Alert: {symbol} has reached ${current_price:,.2f}"
+                            text=f"🚨 Alert: {symbol} has reached {current_price:.4f}"
                         )
                         # Remove triggered alert
                         del self.price_alerts[user_id][symbol]

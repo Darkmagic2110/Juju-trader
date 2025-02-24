@@ -1,55 +1,100 @@
 import requests
 import pandas as pd
-from config import COINGECKO_BASE_URL, SUPPORTED_PAIRS
+from datetime import datetime, timedelta
+from config import ALPHA_VANTAGE_API_KEY, SUPPORTED_PAIRS
+import logging
 
-class CoinGeckoAPI:
+logger = logging.getLogger(__name__)
+
+class AlphaVantageAPI:
     def __init__(self):
-        self.base_url = COINGECKO_BASE_URL
+        self.api_key = ALPHA_VANTAGE_API_KEY
+        self.base_url = "https://www.alphavantage.co/query"
 
     def get_price(self, symbol):
-        """Get current price for a cryptocurrency"""
+        """Get current price for a currency pair"""
         try:
             if symbol not in SUPPORTED_PAIRS:
+                logger.warning(f"Unsupported symbol requested: {symbol}")
                 return None
-            
-            coin_id = SUPPORTED_PAIRS[symbol]
+
+            instrument = SUPPORTED_PAIRS[symbol]
+            logger.info(f"Fetching current price for {symbol} ({instrument})")
+
             response = requests.get(
-                f"{self.base_url}/simple/price",
+                self.base_url,
                 params={
-                    "ids": coin_id,
-                    "vs_currencies": "usd"
+                    "function": "CURRENCY_EXCHANGE_RATE",
+                    "from_currency": instrument[:3],
+                    "to_currency": instrument[3:],
+                    "apikey": self.api_key
                 }
             )
             response.raise_for_status()
             data = response.json()
-            return data[coin_id]["usd"]
+
+            if "Realtime Currency Exchange Rate" not in data:
+                logger.error("Error: No exchange rate data in response")
+                return None
+
+            rate = float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
+            logger.info(f"Successfully fetched price for {symbol}: {rate}")
+            return rate
+
         except Exception as e:
-            print(f"Error fetching price: {e}")
+            logger.error(f"Error fetching price for {symbol}: {e}")
             return None
 
     def get_historical_data(self, symbol, days=100):
         """Get historical price data for technical analysis"""
         try:
             if symbol not in SUPPORTED_PAIRS:
+                logger.warning(f"Unsupported symbol requested: {symbol}")
                 return None
-            
-            coin_id = SUPPORTED_PAIRS[symbol]
+
+            instrument = SUPPORTED_PAIRS[symbol]
+            logger.info(f"Fetching historical data for {symbol} ({instrument})")
+
             response = requests.get(
-                f"{self.base_url}/coins/{coin_id}/market_chart",
+                self.base_url,
                 params={
-                    "vs_currency": "usd",
-                    "days": days,
-                    "interval": "daily"
+                    "function": "FX_DAILY",
+                    "from_symbol": instrument[:3],
+                    "to_symbol": instrument[3:],
+                    "outputsize": "full" if days > 100 else "compact",
+                    "apikey": self.api_key
                 }
             )
             response.raise_for_status()
             data = response.json()
-            
+
+            if "Time Series FX (Daily)" not in data:
+                logger.error("Error: No time series data in response")
+                return None
+
             # Convert to DataFrame
-            df = pd.DataFrame(data["prices"], columns=["timestamp", "price"])
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-            df.set_index("timestamp", inplace=True)
+            df = pd.DataFrame.from_dict(
+                data["Time Series FX (Daily)"],
+                orient="index"
+            )
+
+            # Rename columns and convert to numeric
+            df.columns = ["open", "high", "low", "close"]
+            df = df.astype(float)
+
+            # Add a price column (using closing price)
+            df["price"] = df["close"]
+
+            # Convert index to datetime
+            df.index = pd.to_datetime(df.index)
+
+            # Sort by date and limit to requested number of days
+            df.sort_index(inplace=True)
+            df = df.last(days)
+
+            logger.info(f"Successfully fetched historical data for {symbol}, got {len(df)} days")
             return df
+
         except Exception as e:
-            print(f"Error fetching historical data: {e}")
+            logger.error(f"Error fetching historical data for {symbol}: {e}")
             return None

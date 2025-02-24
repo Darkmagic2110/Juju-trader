@@ -4,9 +4,12 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "alpha-vantage>=3.0.0",
+    "openai>=1.64.0",
     "pandas>=2.2.3",
     "python-telegram-bot[job-queue]>=21.10",
     "requests>=2.32.3",
     "ta>=0.11.0",
     "telegram>=0.0.1",
+    "v20>=3.0.25.0",
 ]

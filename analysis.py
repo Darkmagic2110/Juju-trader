@@ -1,11 +1,11 @@
 import pandas as pd
 import ta
-from api_client import CoinGeckoAPI
+from api_client import AlphaVantageAPI
 from config import SHORT_TERM_PERIOD, LONG_TERM_PERIOD
 
 class TechnicalAnalysis:
     def __init__(self):
-        self.api = CoinGeckoAPI()
+        self.api = AlphaVantageAPI()
 
     def calculate_signals(self, symbol):
         """Calculate technical indicators and generate trading signals"""
@@ -16,10 +16,10 @@ class TechnicalAnalysis:
         # Calculate Moving Averages
         df['SMA_short'] = ta.trend.sma_indicator(df['price'], window=SHORT_TERM_PERIOD)
         df['SMA_long'] = ta.trend.sma_indicator(df['price'], window=LONG_TERM_PERIOD)
-        
+
         # Calculate RSI
         df['RSI'] = ta.momentum.rsi(df['price'], window=14)
-        
+
         # Generate signals
         current_price = df['price'].iloc[-1]
         sma_short = df['SMA_short'].iloc[-1]
@@ -28,7 +28,7 @@ class TechnicalAnalysis:
 
         # Analysis logic
         signal = self._generate_signal(current_price, sma_short, sma_long, rsi)
-        
+
         return {
             'price': current_price,
             'sma_short': sma_short,
@@ -40,13 +40,13 @@ class TechnicalAnalysis:
     def _generate_signal(self, price, sma_short, sma_long, rsi):
         """Generate trading signal based on indicators"""
         signal = ""
-        
+
         # Trend analysis
         if sma_short > sma_long:
             trend = "BULLISH"
         else:
             trend = "BEARISH"
-            
+
         # RSI analysis
         if rsi > 70:
             rsi_signal = "OVERBOUGHT"
@@ -54,7 +54,7 @@ class TechnicalAnalysis:
             rsi_signal = "OVERSOLD"
         else:
             rsi_signal = "NEUTRAL"
-            
+
         # Combined signal
         if trend == "BULLISH" and rsi_signal == "OVERSOLD":
             signal = "STRONG BUY"
@@ -66,5 +66,5 @@ class TechnicalAnalysis:
             signal = "SELL"
         else:
             signal = "NEUTRAL"
-            
+
         return signal
