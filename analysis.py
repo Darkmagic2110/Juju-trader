@@ -56,8 +56,18 @@ class TechnicalAnalysis:
             return None
 
     def _generate_signal(self, price, sma_short, sma_long, rsi):
-        """Generate trading signal based on indicators"""
-        signal = ""
+        """Generate trading signal based on indicators and time"""
+        from datetime import datetime
+        import pytz
+
+        # Get current UTC time
+        current_time = datetime.now(pytz.UTC)
+        current_hour = current_time.hour
+
+        # Define trading sessions (in UTC)
+        london_session = 7 <= current_hour < 16
+        ny_session = 12 <= current_hour < 21
+        asian_session = (current_hour >= 22) or (current_hour < 7)
 
         # Trend analysis
         if sma_short > sma_long:
@@ -73,7 +83,7 @@ class TechnicalAnalysis:
         else:
             rsi_signal = "NEUTRAL"
 
-        # Combined signal
+        # Base signal
         if trend == "BULLISH" and rsi_signal == "OVERSOLD":
             signal = "STRONG BUY"
         elif trend == "BULLISH" and rsi_signal == "NEUTRAL":
@@ -85,4 +95,29 @@ class TechnicalAnalysis:
         else:
             signal = "NEUTRAL"
 
-        return signal
+        # Add timing recommendation
+        time_advice = "\n⏰ Best Time to Trade: "
+        if london_session and ny_session:  # Overlap
+            time_advice += "Now (London-NY overlap - High volatility)"
+        elif london_session:
+            time_advice += "Now (London session)"
+        elif ny_session:
+            time_advice += "Now (New York session)"
+        elif asian_session:
+            time_advice += "Now (Asian session - Lower volatility)"
+        else:
+            time_advice += "Wait for major session"
+
+        # Add specific hour recommendation
+        if signal in ["STRONG BUY", "BUY"]:
+            if london_session:
+                time_advice += "\n🎯 Optimal Entry: 8:00-10:00 UTC"
+            elif ny_session:
+                time_advice += "\n🎯 Optimal Entry: 13:00-15:00 UTC"
+        elif signal in ["STRONG SELL", "SELL"]:
+            if london_session:
+                time_advice += "\n🎯 Optimal Entry: 9:00-11:00 UTC"
+            elif ny_session:
+                time_advice += "\n🎯 Optimal Entry: 14:00-16:00 UTC"
+
+        return signal + time_advice

@@ -10,6 +10,7 @@ dependencies = [
     "pandas>=2.2.3",
     "python-binance>=1.0.27",
     "python-telegram-bot[job-queue]>=21.10",
+    "pytz>=2025.1",
     "requests>=2.32.3",
     "ta>=0.11.0",
     "telegram>=0.0.1",
