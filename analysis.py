@@ -56,13 +56,15 @@ class TechnicalAnalysis:
             return None
 
     def _generate_signal(self, price, sma_short, sma_long, rsi):
-        """Generate trading signal based on indicators and time"""
+        """Generate trading signal based on indicators and Nigerian time"""
         from datetime import datetime
         import pytz
 
-        # Get current UTC time
-        current_time = datetime.now(pytz.UTC)
+        # Get Nigerian time
+        nigeria_tz = pytz.timezone('Africa/Lagos')
+        current_time = datetime.now(nigeria_tz)
         current_hour = current_time.hour
+        time_str = current_time.strftime("%I:%M:%S %p WAT")
 
         # Define trading sessions (in UTC)
         london_session = 7 <= current_hour < 16
@@ -70,10 +72,26 @@ class TechnicalAnalysis:
         asian_session = (current_hour >= 22) or (current_hour < 7)
 
         # Trend analysis
+        # Detailed trend analysis
+        trend_strength = abs(sma_short - sma_long) / sma_long * 100
         if sma_short > sma_long:
             trend = "BULLISH"
+            trend_direction = "🔼 UPTREND"
+            if trend_strength > 1.5:
+                trend_direction += " (Strong)"
+            elif trend_strength > 0.5:
+                trend_direction += " (Moderate)"
+            else:
+                trend_direction += " (Weak)"
         else:
             trend = "BEARISH"
+            trend_direction = "🔽 DOWNTREND"
+            if trend_strength > 1.5:
+                trend_direction += " (Strong)"
+            elif trend_strength > 0.5:
+                trend_direction += " (Moderate)"
+            else:
+                trend_direction += " (Weak)"
 
         # RSI analysis
         if rsi > 70:
@@ -120,4 +138,11 @@ class TechnicalAnalysis:
             elif ny_session:
                 time_advice += "\n🎯 Optimal Entry: 14:00-16:00 UTC"
 
-        return signal + time_advice
+        # Combine all information
+        detailed_signal = f"🕒 Time: {time_str}\n"
+        detailed_signal += f"📊 Trend: {trend_direction}\n"
+        detailed_signal += f"💹 Trend Strength: {trend_strength:.2f}%\n"
+        detailed_signal += f"📈 Signal: {signal}\n"
+        detailed_signal += time_advice
+
+        return detailed_signal
