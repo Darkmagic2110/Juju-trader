@@ -14,7 +14,19 @@ class TechnicalAnalysis:
         try:
             df = self.api.get_historical_data(symbol)
             if df is None:
+                logger.error(f"Could not get historical data for {symbol}")
                 return None
+
+            if len(df) < 2:
+                logger.warning(f"Limited data available for {symbol}, using current price only")
+                current_price = df['price'].iloc[-1]
+                return {
+                    'price': current_price,
+                    'sma_short': current_price,
+                    'sma_long': current_price,
+                    'rsi': 50,  # Neutral RSI
+                    'signal': 'NEUTRAL - Limited Data'
+                }
 
             # Calculate Moving Averages
             df['SMA_short'] = ta.trend.sma_indicator(df['price'], window=SHORT_TERM_PERIOD)

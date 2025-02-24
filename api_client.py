@@ -61,8 +61,27 @@ class AlphaVantageAPI:
             response.raise_for_status()
             data = response.json()
 
+            # Log the response for debugging
+            logger.debug(f"API Response: {data}")
+
+            # Check for API error messages
+            if "Error Message" in data:
+                logger.error(f"API Error: {data['Error Message']}")
+                return None
+            elif "Note" in data:
+                logger.warning(f"API Note: {data['Note']}")
+
             if "Time Series FX (Daily)" not in data:
                 logger.error("Error: No time series data in response")
+                # Try getting current price as fallback
+                current_price = self.get_price(symbol)
+                if current_price:
+                    # Create minimal dataset with current price
+                    df = pd.DataFrame({
+                        'close': [current_price],
+                        'price': [current_price]
+                    }, index=[pd.Timestamp.now()])
+                    return df
                 return None
 
             # Convert to DataFrame
