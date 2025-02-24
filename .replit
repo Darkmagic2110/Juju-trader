@@ -7,23 +7,8 @@ channel = "stable-24_05"
 runButton = "Telegram Bot"
 
 [[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Telegram Bot"
-
-[[workflows.workflow]]
 name = "Telegram Bot"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
+author = 35340858
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
