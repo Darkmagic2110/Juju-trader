@@ -56,7 +56,7 @@ class TechnicalAnalysis:
             return None
 
     def _generate_signal(self, price, sma_short, sma_long, rsi):
-        """Generate trading signal based on indicators and Nigerian time"""
+        """Generate trading signal based on indicators"""
         from datetime import datetime
         import pytz
 
@@ -71,8 +71,7 @@ class TechnicalAnalysis:
         ny_session = 12 <= current_hour < 21
         asian_session = (current_hour >= 22) or (current_hour < 7)
 
-        # Trend analysis
-        # Detailed trend analysis
+        # Trend analysis based on SMAs
         trend_strength = abs(sma_short - sma_long) / sma_long * 100
         if sma_short > sma_long:
             trend = "BULLISH"
