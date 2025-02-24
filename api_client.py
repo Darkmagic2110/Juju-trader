@@ -8,6 +8,59 @@ logger = logging.getLogger(__name__)
 
 class AlphaVantageAPI:
     def __init__(self):
+        self.base_url = "https://www.alphavantage.co/query"
+        
+    def get_price(self, symbol):
+        try:
+            params = {
+                "function": "CURRENCY_EXCHANGE_RATE",
+                "from_currency": symbol[:3],
+                "to_currency": symbol[3:],
+                "apikey": ALPHA_VANTAGE_API_KEY
+            }
+            response = requests.get(self.base_url, params=params)
+            data = response.json()
+            return float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
+        except Exception as e:
+            logger.error(f"Error fetching price: {e}")
+            return None
+
+    def get_sma(self, symbol, period):
+        try:
+            params = {
+                "function": "SMA",
+                "symbol": symbol,
+                "interval": "daily",
+                "time_period": period,
+                "series_type": "close",
+                "apikey": ALPHA_VANTAGE_API_KEY
+            }
+            response = requests.get(self.base_url, params=params)
+            data = response.json()
+            return float(list(data["Technical Analysis: SMA"].values())[0]["SMA"])
+        except Exception as e:
+            logger.error(f"Error calculating SMA: {e}")
+            return None
+
+    def get_rsi(self, symbol):
+        try:
+            params = {
+                "function": "RSI",
+                "symbol": symbol,
+                "interval": "daily",
+                "time_period": 14,
+                "series_type": "close",
+                "apikey": ALPHA_VANTAGE_API_KEY
+            }
+            response = requests.get(self.base_url, params=params)
+            data = response.json()
+            return float(list(data["Technical Analysis: RSI"].values())[0]["RSI"])
+        except Exception as e:
+            logger.error(f"Error calculating RSI: {e}")
+            return 50  # Return neutral RSI on error
+
+class AlphaVantageAPI:
+    def __init__(self):
         self.api_key = ALPHA_VANTAGE_API_KEY
         self.base_url = "https://www.alphavantage.co/query"
 
