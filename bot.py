@@ -109,6 +109,19 @@ class CryptoSignalBot:
         pairs_list = "\n".join(SUPPORTED_PAIRS.keys())
         await update.message.reply_text(f"Supported pairs:\n{pairs_list}")
 
+    async def predict(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Predict buy/sell signals for all supported pairs."""
+        message = "🎯 Trading Predictions:\n\n"
+        for symbol in SUPPORTED_PAIRS:
+            analysis_result = self.analysis.calculate_signals(symbol)
+            if analysis_result:
+                signal = analysis_result['signal']
+                price = analysis_result['price']
+                emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
+                message += f"{emoji} {symbol}: {signal} @ {price:.4f}\n"
+        
+        await update.message.reply_text(message)
+
     async def check_alerts(self, context: ContextTypes.DEFAULT_TYPE):
         """Check price alerts periodically."""
         for user_id, alerts in self.price_alerts.items():
@@ -136,6 +149,7 @@ def main():
     application.add_handler(CommandHandler("analysis", bot.analysis_command))
     application.add_handler(CommandHandler("alert", bot.alert))
     application.add_handler(CommandHandler("pairs", bot.pairs))
+    application.add_handler(CommandHandler("predict", bot.predict))
 
     # Add job for checking alerts
     job_queue = application.job_queue

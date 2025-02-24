@@ -29,4 +29,5 @@ Available commands:
 /alert <symbol> <price> - Set price alert (e.g., /alert EUR/USD 1.2000)
 /analysis <symbol> - Get technical analysis (e.g., /analysis EUR/USD)
 /pairs - Show supported pairs
+/predict - Get buy/sell signals for all pairs
 """
