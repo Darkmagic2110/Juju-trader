@@ -110,48 +110,41 @@ class CryptoSignalBot:
         await update.message.reply_text(f"Supported pairs:\n{pairs_list}")
 
     async def predict(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Show currency selection buttons."""
-        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-        
-        keyboard = []
-        row = []
-        for i, symbol in enumerate(SUPPORTED_PAIRS.keys()):
-            row.append(InlineKeyboardButton(symbol, callback_data=f"predict_{symbol}"))
-            if (i + 1) % 2 == 0 or i == len(SUPPORTED_PAIRS) - 1:
-                keyboard.append(row)
-                row = []
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("🎯 Select currency pair for prediction:", reply_markup=reply_markup)
+        """Show available prediction commands."""
+        message = "Use these commands for predictions:\n\n"
+        for pair in SUPPORTED_PAIRS.keys():
+            message += f"/{pair.replace('/', '')} - Get prediction for {pair}\n"
+        await update.message.reply_text(message)
 
-    async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle button clicks."""
-        query = update.callback_query
-        await query.answer()
+    async def predict_pair(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle prediction for a specific pair."""
+        command = update.message.text[1:].upper()  # Remove / and convert to uppercase
+        symbol = f"{command[:3]}/{command[3:]}"
         
-        if query.data.startswith("predict_"):
-            symbol = query.data.replace("predict_", "")
-            analysis_result = self.analysis.calculate_signals(symbol)
+        if symbol not in SUPPORTED_PAIRS:
+            await update.message.reply_text("Unsupported pair. Use /predict to see available pairs.")
+            return
             
-            if analysis_result:
-                try:
-                    signal = analysis_result['signal']
-                    price = analysis_result['price']
-                    emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
-                    message = f"Prediction for {symbol}:\n\n"
-                    message += f"{emoji} Signal: {signal}\n"
-                    message += f"💰 Price: {price:.4f}\n"
-                    message += f"📊 RSI: {analysis_result['rsi']:.2f}\n"
-                    message += f"📈 Short MA: {analysis_result['sma_short']:.4f}\n"
-                    message += f"📉 Long MA: {analysis_result['sma_long']:.4f}\n"
-                except Exception as e:
-                    message = f"Error processing prediction for {symbol}. Please try again."
-                    logger.error(f"Error in button_handler: {e}")
-                
-                keyboard = [[InlineKeyboardButton("Next Prediction", callback_data=f"predict_{symbol}")]]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await query.edit_message_text(text=message, reply_markup=reply_markup)
+        analysis_result = self.analysis.calculate_signals(symbol)
+        
+        if analysis_result:
+            try:
+                signal = analysis_result['signal']
+                price = analysis_result['price']
+                emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
+                message = f"Prediction for {symbol}:\n\n"
+                message += f"{emoji} Signal: {signal}\n"
+                message += f"💰 Price: {price:.4f}\n"
+                message += f"📊 RSI: {analysis_result['rsi']:.2f}\n"
+                message += f"📈 Short MA: {analysis_result['sma_short']:.4f}\n"
+                message += f"📉 Long MA: {analysis_result['sma_long']:.4f}\n"
+            except Exception as e:
+                message = f"Error processing prediction for {symbol}. Please try again."
+                logger.error(f"Error in predict_pair: {e}")
+            
+            await update.message.reply_text(message)
+        else:
+            await update.message.reply_text(f"Could not get prediction for {symbol}. Please try again later.")
 
     async def check_alerts(self, context: ContextTypes.DEFAULT_TYPE):
         """Check price alerts periodically."""
@@ -181,7 +174,11 @@ def main():
     application.add_handler(CommandHandler("alert", bot.alert))
     application.add_handler(CommandHandler("pairs", bot.pairs))
     application.add_handler(CommandHandler("predict", bot.predict))
-    application.add_handler(CallbackQueryHandler(bot.button_handler))
+    
+    # Add handlers for direct pair predictions
+    for pair in SUPPORTED_PAIRS.keys():
+        pair_command = pair.replace('/', '')
+        application.add_handler(CommandHandler(pair_command, bot.predict_pair))
 
     # Add job for checking alerts
     job_queue = application.job_queue
