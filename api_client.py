@@ -1,63 +1,9 @@
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
-from config import ALPHA_VANTAGE_API_KEY, SUPPORTED_PAIRS
 import logging
+from config import ALPHA_VANTAGE_API_KEY, SUPPORTED_PAIRS
 
 logger = logging.getLogger(__name__)
-
-class AlphaVantageAPI:
-    def __init__(self):
-        self.base_url = "https://www.alphavantage.co/query"
-        
-    def get_price(self, symbol):
-        try:
-            params = {
-                "function": "CURRENCY_EXCHANGE_RATE",
-                "from_currency": symbol[:3],
-                "to_currency": symbol[3:],
-                "apikey": ALPHA_VANTAGE_API_KEY
-            }
-            response = requests.get(self.base_url, params=params)
-            data = response.json()
-            return float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
-        except Exception as e:
-            logger.error(f"Error fetching price: {e}")
-            return None
-
-    def get_sma(self, symbol, period):
-        try:
-            params = {
-                "function": "SMA",
-                "symbol": symbol,
-                "interval": "daily",
-                "time_period": period,
-                "series_type": "close",
-                "apikey": ALPHA_VANTAGE_API_KEY
-            }
-            response = requests.get(self.base_url, params=params)
-            data = response.json()
-            return float(list(data["Technical Analysis: SMA"].values())[0]["SMA"])
-        except Exception as e:
-            logger.error(f"Error calculating SMA: {e}")
-            return None
-
-    def get_rsi(self, symbol):
-        try:
-            params = {
-                "function": "RSI",
-                "symbol": symbol,
-                "interval": "daily",
-                "time_period": 14,
-                "series_type": "close",
-                "apikey": ALPHA_VANTAGE_API_KEY
-            }
-            response = requests.get(self.base_url, params=params)
-            data = response.json()
-            return float(list(data["Technical Analysis: RSI"].values())[0]["RSI"])
-        except Exception as e:
-            logger.error(f"Error calculating RSI: {e}")
-            return 50  # Return neutral RSI on error
 
 class AlphaVantageAPI:
     def __init__(self):
@@ -67,19 +13,15 @@ class AlphaVantageAPI:
     def get_price(self, symbol):
         """Get current price for a currency pair"""
         try:
-            if symbol not in SUPPORTED_PAIRS:
-                logger.warning(f"Unsupported symbol requested: {symbol}")
-                return None
-
-            instrument = SUPPORTED_PAIRS[symbol]
-            logger.info(f"Fetching current price for {symbol} ({instrument})")
+            if '/' in symbol:
+                symbol = symbol.replace('/', '')
 
             response = requests.get(
                 self.base_url,
                 params={
                     "function": "CURRENCY_EXCHANGE_RATE",
-                    "from_currency": instrument[:3],
-                    "to_currency": instrument[3:],
+                    "from_currency": symbol[:3],
+                    "to_currency": symbol[3:],
                     "apikey": self.api_key
                 }
             )
@@ -101,19 +43,17 @@ class AlphaVantageAPI:
     def get_historical_data(self, symbol, days=100):
         """Get historical price data for technical analysis"""
         try:
-            if symbol not in SUPPORTED_PAIRS:
-                logger.warning(f"Unsupported symbol requested: {symbol}")
-                return None
+            if '/' in symbol:
+                symbol = symbol.replace('/', '')
 
-            instrument = SUPPORTED_PAIRS[symbol]
-            logger.info(f"Fetching historical data for {symbol} ({instrument})")
+            logger.info(f"Fetching historical data for {symbol}")
 
             response = requests.get(
                 self.base_url,
                 params={
                     "function": "FX_DAILY",
-                    "from_symbol": instrument[:3],
-                    "to_symbol": instrument[3:],
+                    "from_symbol": symbol[:3],
+                    "to_symbol": symbol[3:],
                     "outputsize": "full" if days > 100 else "compact",
                     "apikey": self.api_key
                 }
@@ -128,24 +68,19 @@ class AlphaVantageAPI:
             # Convert to DataFrame
             df = pd.DataFrame.from_dict(
                 data["Time Series FX (Daily)"],
-                orient="index"
+                orient="index",
+                columns=["open", "high", "low", "close"]
             )
 
-            # Rename columns and convert to numeric
-            df.columns = ["open", "high", "low", "close"]
+            # Convert to numeric
             df = df.astype(float)
-
-            # Add a price column (using closing price)
             df["price"] = df["close"]
 
             # Convert index to datetime
             df.index = pd.to_datetime(df.index)
-
-            # Sort by date and limit to requested number of days
             df.sort_index(inplace=True)
             df = df.tail(days)
 
-            logger.info(f"Successfully fetched historical data for {symbol}, got {len(df)} days")
             return df
 
         except Exception as e:
