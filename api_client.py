@@ -1,41 +1,25 @@
 import requests
 import pandas as pd
 import logging
-from config import ALPHA_VANTAGE_API_KEY, SUPPORTED_PAIRS
+from binance.client import Client
+from config import BINANCE_API_KEY, BINANCE_API_SECRET, SUPPORTED_PAIRS
 
 logger = logging.getLogger(__name__)
 
-class AlphaVantageAPI:
+class BinanceAPI:
     def __init__(self):
-        self.api_key = ALPHA_VANTAGE_API_KEY
-        self.base_url = "https://www.alphavantage.co/query"
+        self.client = Client(BINANCE_API_KEY, BINANCE_API_SECRET)
 
     def get_price(self, symbol):
-        """Get current price for a currency pair"""
+        """Get current price for a cryptocurrency pair"""
         try:
             if '/' in symbol:
                 symbol = symbol.replace('/', '')
 
-            response = requests.get(
-                self.base_url,
-                params={
-                    "function": "CURRENCY_EXCHANGE_RATE",
-                    "from_currency": symbol[:3],
-                    "to_currency": symbol[3:],
-                    "apikey": self.api_key
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if "Realtime Currency Exchange Rate" not in data:
-                logger.error("Error: No exchange rate data in response")
-                return None
-
-            rate = float(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"])
-            logger.info(f"Successfully fetched price for {symbol}: {rate}")
-            return rate
-
+            ticker = self.client.get_symbol_ticker(symbol=symbol)
+            price = float(ticker['price'])
+            logger.info(f"Successfully fetched price for {symbol}: {price}")
+            return price
         except Exception as e:
             logger.error(f"Error fetching price for {symbol}: {e}")
             return None
@@ -48,57 +32,29 @@ class AlphaVantageAPI:
 
             logger.info(f"Fetching historical data for {symbol}")
 
-            response = requests.get(
-                self.base_url,
-                params={
-                    "function": "FX_DAILY",
-                    "from_symbol": symbol[:3],
-                    "to_symbol": symbol[3:],
-                    "outputsize": "full" if days > 100 else "compact",
-                    "apikey": self.api_key
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            # Log the response for debugging
-            logger.debug(f"API Response: {data}")
-
-            # Check for API error messages
-            if "Error Message" in data:
-                logger.error(f"API Error: {data['Error Message']}")
-                return None
-            elif "Note" in data:
-                logger.warning(f"API Note: {data['Note']}")
-
-            if "Time Series FX (Daily)" not in data:
-                logger.error("Error: No time series data in response")
-                # Try getting current price as fallback
-                current_price = self.get_price(symbol)
-                if current_price:
-                    # Create minimal dataset with current price
-                    df = pd.DataFrame({
-                        'close': [current_price],
-                        'price': [current_price]
-                    }, index=[pd.Timestamp.now()])
-                    return df
-                return None
-
-            # Convert to DataFrame
-            df = pd.DataFrame.from_dict(
-                data["Time Series FX (Daily)"],
-                orient="index",
-                columns=["open", "high", "low", "close"]
+            # Get klines/candlestick data
+            klines = self.client.get_historical_klines(
+                symbol,
+                Client.KLINE_INTERVAL_1DAY,
+                f"{days} days ago UTC"
             )
 
-            # Convert to numeric
-            df = df.astype(float)
-            df["price"] = df["close"]
+            # Create DataFrame
+            df = pd.DataFrame(klines, columns=[
+                'timestamp', 'open', 'high', 'low', 'close', 
+                'volume', 'close_time', 'quote_volume', 'trades',
+                'taker_buy_base', 'taker_buy_quote', 'ignore'
+            ])
 
-            # Convert index to datetime
-            df.index = pd.to_datetime(df.index)
-            df.sort_index(inplace=True)
-            df = df.tail(days)
+            # Convert timestamp to datetime
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('timestamp', inplace=True)
+
+            # Convert strings to floats
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col].astype(float)
+
+            df['price'] = df['close']
 
             return df
 

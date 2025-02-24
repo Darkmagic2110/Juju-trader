@@ -5,8 +5,10 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "alpha-vantage>=3.0.0",
+    "binance>=0.3",
     "openai>=1.64.0",
     "pandas>=2.2.3",
+    "python-binance>=1.0.27",
     "python-telegram-bot[job-queue]>=21.10",
     "requests>=2.32.3",
     "ta>=0.11.0",
