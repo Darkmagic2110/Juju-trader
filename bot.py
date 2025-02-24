@@ -2,7 +2,7 @@ import asyncio
 import sys
 import logging
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
 from config import TELEGRAM_BOT_TOKEN, HELP_MESSAGE, SUPPORTED_PAIRS, UPDATE_INTERVAL
 from api_client import AlphaVantageAPI
 from analysis import TechnicalAnalysis
@@ -110,17 +110,44 @@ class CryptoSignalBot:
         await update.message.reply_text(f"Supported pairs:\n{pairs_list}")
 
     async def predict(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Predict buy/sell signals for all supported pairs."""
-        message = "🎯 Trading Predictions:\n\n"
-        for symbol in SUPPORTED_PAIRS:
+        """Show currency selection buttons."""
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        keyboard = []
+        row = []
+        for i, symbol in enumerate(SUPPORTED_PAIRS.keys()):
+            row.append(InlineKeyboardButton(symbol, callback_data=f"predict_{symbol}"))
+            if (i + 1) % 2 == 0 or i == len(SUPPORTED_PAIRS) - 1:
+                keyboard.append(row)
+                row = []
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("🎯 Select currency pair for prediction:", reply_markup=reply_markup)
+
+    async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle button clicks."""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data.startswith("predict_"):
+            symbol = query.data.replace("predict_", "")
             analysis_result = self.analysis.calculate_signals(symbol)
+            
             if analysis_result:
                 signal = analysis_result['signal']
                 price = analysis_result['price']
                 emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
-                message += f"{emoji} {symbol}: {signal} @ {price:.4f}\n"
-        
-        await update.message.reply_text(message)
+                message = f"Prediction for {symbol}:\n\n"
+                message += f"{emoji} Signal: {signal}\n"
+                message += f"💰 Price: {price:.4f}\n"
+                message += f"📊 RSI: {analysis_result['rsi']:.2f}\n"
+                message += f"📈 Short MA: {analysis_result['sma_short']:.4f}\n"
+                message += f"📉 Long MA: {analysis_result['sma_long']:.4f}\n"
+                
+                keyboard = [[InlineKeyboardButton("Next Prediction", callback_data=f"predict_{symbol}")]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(text=message, reply_markup=reply_markup)
 
     async def check_alerts(self, context: ContextTypes.DEFAULT_TYPE):
         """Check price alerts periodically."""
@@ -150,6 +177,7 @@ def main():
     application.add_handler(CommandHandler("alert", bot.alert))
     application.add_handler(CommandHandler("pairs", bot.pairs))
     application.add_handler(CommandHandler("predict", bot.predict))
+    application.add_handler(CallbackQueryHandler(bot.button_handler))
 
     # Add job for checking alerts
     job_queue = application.job_queue
