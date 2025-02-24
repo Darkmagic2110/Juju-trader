@@ -90,7 +90,7 @@ class AlphaVantageAPI:
 
             # Sort by date and limit to requested number of days
             df.sort_index(inplace=True)
-            df = df.last(days)
+            df = df.tail(days)
 
             logger.info(f"Successfully fetched historical data for {symbol}, got {len(df)} days")
             return df

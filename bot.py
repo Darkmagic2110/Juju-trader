@@ -134,15 +134,19 @@ class CryptoSignalBot:
             analysis_result = self.analysis.calculate_signals(symbol)
             
             if analysis_result:
-                signal = analysis_result['signal']
-                price = analysis_result['price']
-                emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
-                message = f"Prediction for {symbol}:\n\n"
-                message += f"{emoji} Signal: {signal}\n"
-                message += f"💰 Price: {price:.4f}\n"
-                message += f"📊 RSI: {analysis_result['rsi']:.2f}\n"
-                message += f"📈 Short MA: {analysis_result['sma_short']:.4f}\n"
-                message += f"📉 Long MA: {analysis_result['sma_long']:.4f}\n"
+                try:
+                    signal = analysis_result['signal']
+                    price = analysis_result['price']
+                    emoji = "🟢" if "BUY" in signal else "🔴" if "SELL" in signal else "⚪️"
+                    message = f"Prediction for {symbol}:\n\n"
+                    message += f"{emoji} Signal: {signal}\n"
+                    message += f"💰 Price: {price:.4f}\n"
+                    message += f"📊 RSI: {analysis_result['rsi']:.2f}\n"
+                    message += f"📈 Short MA: {analysis_result['sma_short']:.4f}\n"
+                    message += f"📉 Long MA: {analysis_result['sma_long']:.4f}\n"
+                except Exception as e:
+                    message = f"Error processing prediction for {symbol}. Please try again."
+                    logger.error(f"Error in button_handler: {e}")
                 
                 keyboard = [[InlineKeyboardButton("Next Prediction", callback_data=f"predict_{symbol}")]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
