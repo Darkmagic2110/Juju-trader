@@ -4,9 +4,12 @@ from api_client import AlphaVantageAPI
 from config import SHORT_TERM_PERIOD, LONG_TERM_PERIOD
 import logging
 
-logger = logging.getLogger(__name__) # Assuming a logger is configured elsewhere
+logger = logging.getLogger(
+    __name__)  # Assuming a logger is configured elsewhere
+
 
 class TechnicalAnalysis:
+
     def __init__(self):
         self.api = AlphaVantageAPI()
 
@@ -18,7 +21,9 @@ class TechnicalAnalysis:
                 return None
 
             if len(df) < 2:
-                logger.warning(f"Limited data available for {symbol}, using current price only")
+                logger.warning(
+                    f"Limited data available for {symbol}, using current price only"
+                )
                 current_price = df['price'].iloc[-1]
                 return {
                     'price': current_price,
@@ -29,8 +34,10 @@ class TechnicalAnalysis:
                 }
 
             # Calculate Moving Averages
-            df['SMA_short'] = ta.trend.sma_indicator(df['price'], window=SHORT_TERM_PERIOD)
-            df['SMA_long'] = ta.trend.sma_indicator(df['price'], window=LONG_TERM_PERIOD)
+            df['SMA_short'] = ta.trend.sma_indicator(df['price'],
+                                                     window=SHORT_TERM_PERIOD)
+            df['SMA_long'] = ta.trend.sma_indicator(df['price'],
+                                                    window=LONG_TERM_PERIOD)
 
             # Calculate RSI
             df['RSI'] = ta.momentum.rsi(df['price'], window=14)
@@ -42,7 +49,8 @@ class TechnicalAnalysis:
             rsi = df['RSI'].iloc[-1]
 
             # Analysis logic (using original logic, improved with error handling)
-            signal = self._generate_signal(current_price, sma_short, sma_long, rsi)
+            signal = self._generate_signal(current_price, sma_short, sma_long,
+                                           rsi)
 
             return {
                 'price': current_price,
